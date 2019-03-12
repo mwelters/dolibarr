@@ -52,8 +52,10 @@ $feature2 = (($socid && $user->rights->user->self->creer)?'':'user');
 //$result = restrictedArea($user, 'salaries|hrm', $id, 'user&user', $feature2);
 $ok=false;
 if ($user->id == $id) $ok=true; // A user can always read its own card
+if ($user->admin) $ok=true; // (an admin can always read cards)
 if (! empty($user->rights->salaries->read)) $ok=true;
 if (! empty($user->rights->hrm->read)) $ok=true;
+if (! empty($user->rights->holiday->read_all)) $ok=true;
 if (! $ok)
 {
 	accessforbidden();
