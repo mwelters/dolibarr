@@ -316,8 +316,6 @@ class FormProduct
 
 		$return = '';
 
-		$measuring_units = array();
-
 		require_once DOL_DOCUMENT_ROOT . '/core/class/cunits.class.php';
 		$measuringUnits = new CUnits($db);
         $result = $measuringUnits->fetchAll(
@@ -339,8 +337,8 @@ class FormProduct
 				$return .= '<option value="0">' . $langs->trans("Default") . '</option>';
 
 			foreach ($measuringUnits->records as $lines) {
-				$return .= '<option value="' . $lines->code . '"';
-				if ($key == $default) {
+				$return .= '<option value="' . $lines->id . '"';
+				if ($lines->id == $default) {
 					$return .= ' selected';
 				}
 				// $return.= '>'.$value.'</option>';

@@ -399,9 +399,24 @@ abstract class CommonObject
 	 */
 	public $location_incoterms;
 
+	/**
+	 * @var string The name
+	 */
 	public $name;
+
+    /**
+     * @var string The lastname
+     */
 	public $lastname;
+
+    /**
+     * @var string The firstname
+     */
 	public $firstname;
+
+    /**
+     * @var string The civility code, not an integer
+     */
 	public $civility_id;
 
 	// Dates
@@ -7205,6 +7220,21 @@ abstract class CommonObject
 		if (! $error)
 		{
 			$this->id = $this->db->last_insert_id(MAIN_DB_PREFIX . $this->table_element);
+		}
+
+		// If we have a field ref with a default value of (PROV)
+		if (! $error)
+		{
+		    if (key_exists('ref', $this->fields) && $this->fields['ref']['notnull'] > 0 && ! is_null($this->fields['ref']['default']) && $this->fields['ref']['default'] == '(PROV)')
+		    {
+		        $sql="UPDATE ".MAIN_DB_PREFIX.$this->table_element." SET ref = '(PROV".$this->id.")' WHERE ref = '(PROV)' AND rowid = ".$this->id;
+		        $resqlupdate = $this->db->query($sql);
+		        if ($resqlupdate===false)
+		        {
+		            $error++;
+		            $this->errors[] = $this->db->lasterror();
+		        }
+		    }
 		}
 
 		// Create extrafields
