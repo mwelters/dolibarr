@@ -1096,6 +1096,10 @@ if (! function_exists("llxHeader"))
 		// html header
 		top_htmlhead($head, $title, $disablejs, $disablehead, $arrayofjs, $arrayofcss);
 
+		if ($conf->browser->layout == 'phone'){
+		    $morecssonbody.= ' sidebar-collapse';
+		}
+
 		print '<body id="mainbody"'.($morecssonbody?' class="'.$morecssonbody.'"':'').'>' . "\n";
 
 		// top menu and left menu area
@@ -1983,7 +1987,7 @@ function printSearchForm($urlaction, $urlobject, $title, $htmlmorecss, $htmlinpu
 	global $conf,$langs,$user;
 
 	$ret='';
-	$ret.='<form action="'.$urlaction.'" method="post" class="searchform">';
+	$ret.='<form action="'.$urlaction.'" method="post" class="searchform nowraponall">';
 	$ret.='<input type="hidden" name="token" value="'.$_SESSION['newtoken'].'">';
 	$ret.='<input type="hidden" name="mode" value="search">';
 	$ret.='<input type="hidden" name="savelogin" value="'.dol_escape_htmltag($user->login).'">';
