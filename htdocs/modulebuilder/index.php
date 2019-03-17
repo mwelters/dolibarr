@@ -22,6 +22,9 @@
 /**
  *       \file       htdocs/modulebuilder/index.php
  *       \brief      Home page for module builder module
+ *
+ *       You can add parameter dirins=/home/ldestailleur/git/dolibarr/htdocs/mymodule to force generation of module
+ *       into the dirins directory.
  */
 
 if (! defined('NOSCANPOSTFORINJECTION'))   define('NOSCANPOSTFORINJECTION', '1');			// Do not check anti SQL+XSS injection attack test
@@ -301,7 +304,12 @@ if ($dirins && $action == 'initcli' && !empty($module))
             'Mon module'=>$modulename,
             'mon module'=>$modulename,
             'htdocs/modulebuilder/template'=>strtolower($modulename),
-            '---Put here your own copyright and developer email---'=>dol_print_date($now, '%Y').' '.$user->getFullName($langs).($user->email?' <'.$user->email.'>':'')
+            '__MYCOMPANY_NAME__'=>$mysoc->name,
+            '__KEYWORDS__'=>$modulename,
+            '__USER_FULLNAME__'=>$user->getFullName($langs),
+            '__USER_EMAIL__'=>$user->email,
+            '__YYYY-MM-DD__'=>dol_print_date($now, 'dayrfc'),
+            '---Put here your own copyright and developer email---'=>dol_print_date($now, 'dayrfc').' '.$user->getFullName($langs).($user->email?' <'.$user->email.'>':'')
         );
 
         dolReplaceInFile($destfile, $arrayreplacement);
@@ -311,8 +319,8 @@ if ($dirins && $action == 'initdoc' && !empty($module))
 {
     dol_mkdir($dirins.'/'.strtolower($module).'/doc');
     $srcdir = DOL_DOCUMENT_ROOT.'/modulebuilder/template';
-    $srcfile = $srcdir.'/doc/Specifications.asciidoc';
-    $destfile = $dirins.'/'.strtolower($module).'/doc/Specifications.asciidoc';
+    $srcfile = $srcdir.'/doc/Documentation.asciidoc';
+    $destfile = $dirins.'/'.strtolower($module).'/doc/Documentation.asciidoc';
     //var_dump($srcfile);var_dump($destfile);
     $result = dol_copy($srcfile, $destfile, 0, 0);
 
@@ -330,7 +338,12 @@ if ($dirins && $action == 'initdoc' && !empty($module))
             'Mon module'=>$modulename,
             'mon module'=>$modulename,
             'htdocs/modulebuilder/template'=>strtolower($modulename),
-            '---Put here your own copyright and developer email---'=>dol_print_date($now, '%Y').' '.$user->getFullName($langs).($user->email?' <'.$user->email.'>':'')
+            '__MYCOMPANY_NAME__'=>$mysoc->name,
+            '__KEYWORDS__'=>$modulename,
+            '__USER_FULLNAME__'=>$user->getFullName($langs),
+            '__USER_EMAIL__'=>$user->email,
+            '__YYYY-MM-DD__'=>dol_print_date($now, 'dayrfc'),
+            '---Put here your own copyright and developer email---'=>dol_print_date($now, 'dayrfc').' '.$user->getFullName($langs).($user->email?' <'.$user->email.'>':'')
         );
 
         dolReplaceInFile($destfile, $arrayreplacement);
@@ -932,14 +945,13 @@ if ($dirins && $action == 'generatedoc')
 {
 	$FILENAMEDOC=strtolower($module).'.html';
 	$dirofmodule = dol_buildpath(strtolower($module), 0).'/doc';
-	$outputfiledoc = $dirofmodule.'/'.$FILENAMEDOC;
 
 	$util = new Utils($db);
 	$result = $util->generateDoc($module);
 
 	if ($result > 0)
 	{
-		setEventMessages($langs->trans("DocFileGeneratedInto", $outputfiledoc), null);
+	    setEventMessages($langs->trans("DocFileGeneratedInto", $dirofmodule), null);
 	}
 	else
 	{
@@ -1066,56 +1078,73 @@ $text=$langs->trans("ModuleBuilder");
 
 print load_fiche_titre($text, '', 'title_setup');
 
+print $langs->trans("ModuleBuilderDesc", 'https://wiki.dolibarr.org/index.php/Module_development#Create_your_module').'<br>';
+
+$dirsrootforscan=array($dirread);
+if ($dirread != DOL_DOCUMENT_ROOT && ! empty($conf->global->MAIN_FEATURES_LEVEL >=2)) { $dirsrootforscan[]=DOL_DOCUMENT_ROOT; }
+
 // Search modules to edit
 $listofmodules=array();
-
-$dirsincustom=dol_dir_list($dirread, 'directories');
-if (is_array($dirsincustom) && count($dirsincustom) > 0) {
-	foreach ($dirsincustom as $dircustomcursor) {
-		$fullname = $dircustomcursor['fullname'];
-		if (dol_is_file($fullname . '/' . $FILEFLAG))
-		{
-			// Get real name of module (MyModule instead of mymodule)
-			$dirtoscanrel = basename($fullname).'/core/modules/';
-
-			$descriptorfiles = dol_dir_list(dirname($fullname).'/'.$dirtoscanrel, 'files', 0, 'mod.*\.class\.php$');
-			if (empty($descriptorfiles))	// If descriptor not found into module dir, we look into main module dir.
-			{
-				$dirtoscanrel = 'core/modules/';
-				$descriptorfiles = dol_dir_list($fullname.'/../'.$dirtoscanrel, 'files', 0, 'mod'.strtoupper(basename($fullname)).'\.class\.php$');
-			}
-			$modulenamewithcase = '';
-			$moduledescriptorrelpath = '';
-			$moduledescriptorfullpath = '';
-
-			foreach ($descriptorfiles as $descriptorcursor) {
-				$modulenamewithcase = preg_replace('/^mod/', '', $descriptorcursor['name']);
-				$modulenamewithcase = preg_replace('/\.class\.php$/', '', $modulenamewithcase);
-				$moduledescriptorrelpath = $dirtoscanrel.$descriptorcursor['name'];
-				$moduledescriptorfullpath = $descriptorcursor['fullname'];
-				//var_dump($descriptorcursor);
-			}
-			if ($modulenamewithcase)
-			{
-				$listofmodules[$dircustomcursor['name']] = array('modulenamewithcase'=>$modulenamewithcase, 'moduledescriptorrelpath'=> $moduledescriptorrelpath, 'moduledescriptorfullpath'=>$moduledescriptorfullpath);
-			}
-			//var_dump($listofmodules);
-		}
-	}
-}
-if ($forceddirread && empty($listofmodules))
+foreach($dirsrootforscan as $dirread)
 {
-	$listofmodules[strtolower($module)] = array('modulenamewithcase'=>$module, 'moduledescriptorrelpath'=> 'notyetimplemented', 'moduledescriptorfullpath'=> 'notyetimplemented');
-}
+    $dirsincustom=dol_dir_list($dirread, 'directories');
+    if (is_array($dirsincustom) && count($dirsincustom) > 0) {
+    	foreach ($dirsincustom as $dircustomcursor) {
+    		$fullname = $dircustomcursor['fullname'];
+    		if (dol_is_file($fullname . '/' . $FILEFLAG))
+    		{
+    			// Get real name of module (MyModule instead of mymodule)
+    			$dirtoscanrel = basename($fullname).'/core/modules/';
 
-// Show description of content
-$newdircustom=$dirins;
-if (empty($newdircustom)) $newdircustom=img_warning();
-print $langs->trans("ModuleBuilderDesc", 'https://wiki.dolibarr.org/index.php/Module_development#Create_your_module').'<br>';
-print $langs->trans("ModuleBuilderDesc2", 'conf/conf.php', $newdircustom).'<br>';
-// If dirread was forced to somewhere else, by using URL
-// htdocs/modulebuilder/index.php?module=Inventory@/home/ldestailleur/git/dolibarr/htdocs/product
-if ($forceddirread) print $langs->trans("DirScanned").' : <strong>'.$dirread.'</strong><br>';
+    			$descriptorfiles = dol_dir_list(dirname($fullname).'/'.$dirtoscanrel, 'files', 0, 'mod.*\.class\.php$');
+    			if (empty($descriptorfiles))	// If descriptor not found into module dir, we look into main module dir.
+    			{
+    				$dirtoscanrel = 'core/modules/';
+    				$descriptorfiles = dol_dir_list($fullname.'/../'.$dirtoscanrel, 'files', 0, 'mod'.strtoupper(basename($fullname)).'\.class\.php$');
+    			}
+    			$modulenamewithcase = '';
+    			$moduledescriptorrelpath = '';
+    			$moduledescriptorfullpath = '';
+
+    			foreach ($descriptorfiles as $descriptorcursor) {
+    				$modulenamewithcase = preg_replace('/^mod/', '', $descriptorcursor['name']);
+    				$modulenamewithcase = preg_replace('/\.class\.php$/', '', $modulenamewithcase);
+    				$moduledescriptorrelpath = $dirtoscanrel.$descriptorcursor['name'];
+    				$moduledescriptorfullpath = $descriptorcursor['fullname'];
+    				//var_dump($descriptorcursor);
+    			}
+    			if ($modulenamewithcase)
+    			{
+    				$listofmodules[$dircustomcursor['name']] = array(
+    				    'modulenamewithcase'=>$modulenamewithcase,
+    				    'moduledescriptorrelpath'=> $moduledescriptorrelpath,
+    				    'moduledescriptorfullpath'=>$moduledescriptorfullpath,
+    				    'moduledescriptorrootpath'=>$dirread
+    				);
+    			}
+    			//var_dump($listofmodules);
+    		}
+    	}
+    }
+
+    if ($forceddirread && empty($listofmodules))    // $forceddirread is 1 if we forced dir to read with dirins=... or with module=...@mydir
+    {
+    	$listofmodules[strtolower($module)] = array(
+    	    'modulenamewithcase'=>$module,
+    	    'moduledescriptorrelpath'=> 'notyetimplemented',
+    	    'moduledescriptorfullpath'=> 'notyetimplemented',
+            'moduledescriptorrootpath'=> 'notyetimplemented',
+    	);
+    }
+
+    // Show description of content
+    $newdircustom=$dirins;
+    if (empty($newdircustom)) $newdircustom=img_warning();
+    // If dirread was forced to somewhere else, by using URL
+    // htdocs/modulebuilder/index.php?module=Inventory@/home/ldestailleur/git/dolibarr/htdocs/product
+    print $langs->trans("DirScanned").' : <strong>'.$dirread.'</strong><br>';
+}
+//var_dump($listofmodules);
 
 $message='';
 if (! $dirins)
@@ -1190,7 +1219,7 @@ $head = array();
 $h=0;
 
 $head[$h][0] = $_SERVER["PHP_SELF"].'?module=initmodule';
-$head[$h][1] = $langs->trans("NewModule");
+$head[$h][1] = $langs->trans("NewModule").'<span class="fa fa-plus-circle valignmiddle paddingleft"></span>';
 $head[$h][2] = 'initmodule';
 $h++;
 
@@ -1218,7 +1247,9 @@ if ($module == 'initmodule')
 	print '<input type="hidden" name="action" value="initmodule">';
 	print '<input type="hidden" name="module" value="initmodule">';
 
-	print $langs->trans("EnterNameOfModuleDesc").'<br><br>';
+	print $langs->trans("ModuleBuilderDesc2", 'conf/conf.php', $newdircustom).'<br>';
+	print $langs->trans("EnterNameOfModuleDesc").'<br>';
+	print '<br>';
 
 	print '<input type="text" name="modulename" value="'.dol_escape_htmltag($modulename).'" placeholder="'.dol_escape_htmltag($langs->trans("ModuleKey")).'">';
 
@@ -1243,6 +1274,8 @@ elseif (! empty($module))
 	// Tabs for module
 	if (! $error)
 	{
+	    $dirread = $listofmodules[strtolower($module)]['moduledescriptorrootpath'];
+
 		$head2 = array();
 		$h=0;
 
